@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>Observación de Campo / Field Observation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════
+       VARIABLES
+    ═══════════════════════════════════════════ */
+    :root {
+      --bg:            #F5F0E6;
+      --ink:           #1A1814;
+      --ink-muted:     #706B60;
+      --ink-faint:     #A89F93;
+      --rule:          #D4CEBC;
+      --rule-dark:     #B5AFA0;
+      --red:           #C41E00;
+      --red-dim:       #EDE3DF;
+      --chip-bg:       #EBE6D8;
+      --chip-border:   #C4BEAf;
+      --sel-bg:        #1A1814;
+      --sel-text:      #F5F0E6;
+      --header-h:      54px;
+      --font-mono:     'IBM Plex Mono', 'Courier New', monospace;
+      --font-sans:     'IBM Plex Sans', system-ui, sans-serif;
+    }
+
+    /* ═══════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding-top: var(--header-h);
+    }
+
+    /* ═══════════════════════════════════════════
+       STICKY HEADER
+    ═══════════════════════════════════════════ */
+    .site-header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--header-h);
+      background: var(--ink);
+      color: var(--bg);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 10px 16px 0;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .header-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.9;
+      white-space: nowrap;
+    }
+
+    .header-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      opacity: 0.5;
+      white-space: nowrap;
+    }
+
+    .progress-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      flex-shrink: 0;
+    }
+
+    .progress-label .prog-done { color: var(--bg); }
+    .progress-label .prog-total { opacity: 0.45; }
+
+    .progress-track {
+      height: 3px;
+      background: rgba(255,255,255,0.12);
+      margin-top: 9px;
+      flex-shrink: 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--red);
+      width: 0%;
+      transition: width 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* ═══════════════════════════════════════════
+       DRAFT BANNER
+    ═══════════════════════════════════════════ */
+    .draft-banner {
+      display: none;
+      background: #252118;
+      border-bottom: 2px solid var(--red);
+      padding: 12px 16px;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .draft-banner.visible { display: flex; }
+
+    .draft-text {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--bg);
+      flex: 1;
+      min-width: 160px;
+      line-height: 1.4;
+    }
+    .draft-text strong { display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; margin-bottom: 2px; }
+
+    .draft-btns { display: flex; gap: 8px; }
+
+    .btn-draft {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      border: 1px solid rgba(245,240,230,0.25);
+      background: transparent;
+      color: var(--bg);
+      cursor: pointer;
+      border-radius: 1px;
+      min-height: 40px;
+    }
+    .btn-draft.primary { background: var(--red); border-color: var(--red); }
+    .btn-draft:active { opacity: 0.75; }
+
+    /* ═══════════════════════════════════════════
+       SYNC TOAST (top-of-form inline)
+    ═══════════════════════════════════════════ */
+    .sync-bar {
+      display: none;
+      background: #1A2F1A;
+      border-bottom: 1px solid #2D5A2D;
+      padding: 10px 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: #8FBF8F;
+      text-transform: uppercase;
+    }
+    .sync-bar.visible { display: block; }
+
+    /* ═══════════════════════════════════════════
+       MAIN CONTAINER
+    ═══════════════════════════════════════════ */
+    .form-wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      padding-bottom: 80px;
+    }
+
+    .req-note {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      padding: 14px 16px 0;
+      letter-spacing: 0.04em;
+    }
+    .req-note .star { color: var(--red); }
+
+    /* ═══════════════════════════════════════════
+       FORM SECTIONS
+    ═══════════════════════════════════════════ */
+    .form-section {
+      border-top: 2px solid var(--ink);
+      padding: 24px 16px 8px;
+      margin-top: 8px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .sec-num {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--red);
+      letter-spacing: 0.04em;
+      padding-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .sec-labels { display: flex; flex-direction: column; gap: 2px; }
+
+    .sec-es {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+
+    .sec-en {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--ink-muted);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    /* ═══════════════════════════════════════════
+       FIELD
+    ═══════════════════════════════════════════ */
+    .field { margin-bottom: 28px; }
+
+    .field-label { display: block; margin-bottom: 8px; }
+
+    .lbl-es {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      letter-spacing: 0.03em;
+      display: block;
+      line-height: 1.3;
+    }
+
+    .lbl-en {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--ink-muted);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      display: block;
+      margin-top: 3px;
+    }
+
+    .req-star { color: var(--red); margin-left: 2px; }
+
+    /* ═══════════════════════════════════════════
+       INPUTS & TEXTAREAS
+    ═══════════════════════════════════════════ */
+    .form-input,
+    .form-textarea {
+      display: block;
+      width: 100%;
+      font-family: var(--font-sans);
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--ink);
+      background: transparent;
+      border: none;
+      border-bottom: 1.5px solid var(--rule-dark);
+      padding: 9px 0;
+      outline: none;
+      border-radius: 0;
+      -webkit-appearance: none;
+      appearance: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-input:focus,
+    .form-textarea:focus { border-bottom-color: var(--ink); }
+
+    .form-input.has-error,
+    .form-textarea.has-error { border-bottom-color: var(--red); }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 96px;
+      line-height: 1.65;
+      padding-top: 6px;
+    }
+
+    input[type="date"].form-input { font-family: var(--font-sans); color-scheme: light; }
+
+    .field-err {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--red);
+      letter-spacing: 0.04em;
+      margin-top: 5px;
+      display: none;
+    }
+    .field-err.visible { display: block; }
+
+    ::placeholder { color: var(--ink-faint); }
+
+    /* ═══════════════════════════════════════════
+       TAG SELECTORS / CHIPS
+    ═══════════════════════════════════════════ */
+    .chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .chip {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      padding: 10px 14px;
+      background: var(--chip-bg);
+      border: 1px solid var(--chip-border);
+      color: var(--ink);
+      cursor: pointer;
+      border-radius: 2px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .chip:active { opacity: 0.75; }
+
+    .chip.selected {
+      background: var(--sel-bg);
+      color: var(--sel-text);
+      border-color: var(--sel-bg);
+    }
+
+    .chip-group.has-error .chip:not(.selected) {
+      border-color: var(--red);
+      background: var(--red-dim);
+    }
+
+    /* ═══════════════════════════════════════════
+       TEXTAREA RULED LINES
+    ═══════════════════════════════════════════ */
+    .form-textarea {
+      background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 31px,
+        var(--rule) 31px,
+        var(--rule) 32px
+      );
+      line-height: 32px;
+      padding-top: 0;
+    }
+
+    /* ═══════════════════════════════════════════
+       PHOTO
+    ═══════════════════════════════════════════ */
+    .photo-zone {
+      position: relative;
+      border: 1.5px dashed var(--rule-dark);
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .photo-zone:hover { border-color: var(--ink); }
+
+    #photo-input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .photo-zone-text {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-muted);
+      letter-spacing: 0.04em;
+      pointer-events: none;
+    }
+    .photo-zone-text strong {
+      display: block;
+      font-size: 13px;
+      color: var(--ink);
+      margin-bottom: 5px;
+      letter-spacing: 0.02em;
+    }
+    .photo-icon {
+      font-size: 24px;
+      display: block;
+      margin-bottom: 8px;
+      opacity: 0.6;
+    }
+
+    .photo-preview-wrap {
+      display: none;
+      margin-top: 10px;
+      position: relative;
+    }
+    .photo-preview-wrap.visible { display: block; }
+
+    .photo-preview {
+      display: block;
+      width: 100%;
+      max-height: 260px;
+      object-fit: cover;
+      border: 1px solid var(--rule-dark);
+    }
+
+    .btn-remove-photo {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 6px 10px;
+      background: var(--ink);
+      color: var(--bg);
+      border: none;
+      cursor: pointer;
+      border-radius: 1px;
+      min-height: 34px;
+    }
+    .btn-remove-photo:active { background: var(--red); }
+
+    .photo-hint {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--ink-faint);
+      margin-top: 8px;
+      letter-spacing: 0.04em;
+      line-height: 1.5;
+    }
+
+    /* ═══════════════════════════════════════════
+       SUBMIT
+    ═══════════════════════════════════════════ */
+    .submit-zone {
+      padding: 20px 16px 48px;
+      border-top: 1px solid var(--rule);
+    }
+
+    .btn-submit {
+      display: block;
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 19px 24px;
+      background: var(--ink);
+      color: var(--bg);
+      border: 2px solid var(--ink);
+      cursor: pointer;
+      border-radius: 0;
+      min-height: 58px;
+      transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-submit:hover { background: var(--red); border-color: var(--red); }
+    .btn-submit:active { opacity: 0.85; }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+    .submit-hint {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      text-align: center;
+      margin-top: 12px;
+      letter-spacing: 0.04em;
+      min-height: 18px;
+    }
+    .submit-hint.warn { color: var(--red); }
+
+    .queue-count {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      text-align: center;
+      margin-top: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ═══════════════════════════════════════════
+       TOAST NOTIFICATIONS
+    ═══════════════════════════════════════════ */
+    .toast-wrap {
+      position: fixed;
+      bottom: 20px;
+      left: 12px;
+      right: 12px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 8px;
+      pointer-events: none;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    .toast {
+      font-family: var(--font-mono);
+      padding: 14px 16px;
+      background: var(--ink);
+      color: var(--bg);
+      border-left: 4px solid transparent;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      pointer-events: all;
+    }
+    .toast.visible { opacity: 1; transform: translateY(0); }
+    .toast.t-success { border-left-color: #4DB865; }
+    .toast.t-error   { border-left-color: var(--red); }
+    .toast.t-info    { border-left-color: #8A9BA8; }
+
+    .toast-kind {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.55;
+      margin-bottom: 4px;
+    }
+    .toast-msg { font-size: 13px; line-height: 1.4; }
+
+    /* ═══════════════════════════════════════════
+       LOADING SPINNER ON SUBMIT
+    ═══════════════════════════════════════════ */
+    .btn-submit.loading {
+      position: relative;
+      color: transparent;
+    }
+    .btn-submit.loading::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 18px; height: 18px;
+      margin: -9px 0 0 -9px;
+      border: 2px solid rgba(245,240,230,0.3);
+      border-top-color: var(--bg);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════════════════════════════════
+       SCROLLBAR
+    ═══════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--rule-dark); }
+
+    /* ═══════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════ */
+    @media (min-width: 480px) {
+      .form-section { padding-left: 24px; padding-right: 24px; }
+      .submit-zone  { padding-left: 24px; padding-right: 24px; }
+      .req-note     { padding-left: 24px; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ─── Draft Restore Banner ─── -->
+<div class="draft-banner" id="draft-banner" role="alert" aria-live="polite">
+  <div class="draft-text">
+    <strong>Borrador / Draft</strong>
+    ¿Restaurar observación guardada? / Restore saved draft?
+  </div>
+  <div class="draft-btns">
+    <button class="btn-draft" id="btn-discard-draft" type="button">Descartar</button>
+    <button class="btn-draft primary" id="btn-restore-draft" type="button">Restaurar</button>
+  </div>
+</div>
+
+<!-- ─── Sticky Header ─── -->
+<header class="site-header" role="banner">
+  <div class="header-row">
+    <div>
+      <span class="header-title">Observación de Campo</span>
+      <span class="header-sub"> &nbsp;/&nbsp; Field Observation</span>
+    </div>
+    <div class="progress-label" id="prog-label" aria-label="Required fields completed">
+      <span class="prog-done" id="prog-done">0</span>
+      <span class="prog-total"> / 8</span>
+    </div>
+  </div>
+  <div class="progress-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="8" id="progress-bar">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+</header>
+
+<!-- ─── Main Form ─── -->
+<main class="form-wrap">
+
+  <p class="req-note"><span class="star">*</span> Campo requerido / Required field</p>
+
+  <form id="obs-form" novalidate autocomplete="off">
+
+    <!-- ═══ SECTION 01: Identificación ═══ -->
+    <section class="form-section" id="sec-01" aria-labelledby="sec01-title">
+      <div class="section-head">
+        <span class="sec-num">01</span>
+        <div class="sec-labels">
+          <span class="sec-es" id="sec01-title">Identificación</span>
+          <span class="sec-en">Identification</span>
+        </div>
+      </div>
+
+      <!-- Process Name -->
+      <div class="field">
+        <label class="field-label" for="processName">
+          <span class="lbl-es">Nombre del Proceso<span class="req-star">*</span></span>
+          <span class="lbl-en">Process Name</span>
+        </label>
+        <input
+          type="text"
+          id="processName"
+          class="form-input"
+          placeholder="Ej. Evaluación de calidad en campo"
+          autocapitalize="sentences"
+          required
+        >
+        <div class="field-err" id="err-processName">Campo requerido / Required field</div>
+      </div>
+
+      <!-- Date -->
+      <div class="field">
+        <label class="field-label" for="dateObserved">
+          <span class="lbl-es">Fecha Observada<span class="req-star">*</span></span>
+          <span class="lbl-en">Date Observed</span>
+        </label>
+        <input
+          type="date"
+          id="dateObserved"
+          class="form-input"
+          required
+        >
+        <div class="field-err" id="err-dateObserved">Campo requerido / Required field</div>
+      </div>
+
+      <!-- Observer (chip / required) -->
+      <div class="field">
+        <div class="field-label" id="lbl-observer">
+          <span class="lbl-es">Observador<span class="req-star">*</span></span>
+          <span class="lbl-en">Observer</span>
+        </div>
+        <div class="chip-group" id="chips-observer" role="group" aria-labelledby="lbl-observer">
+          <button type="button" class="chip" data-group="observer" data-value="Victoria">Victoria</button>
+          <button type="button" class="chip" data-group="observer" data-value="Mariano">Mariano</button>
+          <button type="button" class="chip" data-group="observer" data-value="Jeremy">Jeremy</button>
+          <button type="button" class="chip" data-group="observer" data-value="Other">Other</button>
+        </div>
+        <div class="field-err" id="err-observer">Seleccione observador / Select observer</div>
+      </div>
+
+      <!-- Institution (chip / optional) -->
+      <div class="field">
+        <div class="field-label" id="lbl-institution">
+          <span class="lbl-es">Institución</span>
+          <span class="lbl-en">Institution</span>
+        </div>
+        <div class="chip-group" id="chips-institution" role="group" aria-labelledby="lbl-institution">
+          <button type="button" class="chip" data-group="institution" data-value="SAG">SAG</button>
+          <button type="button" class="chip" data-group="institution" data-value="INDAP">INDAP</button>
+          <button type="button" class="chip" data-group="institution" data-value="SEREMI">SEREMI</button>
+          <button type="button" class="chip" data-group="institution" data-value="GORE">GORE</button>
+          <button type="button" class="chip" data-group="institution" data-value="Producer / Productor">Productor</button>
+          <button type="button" class="chip" data-group="institution" data-value="Cooperative / Cooperativa">Cooperativa</button>
+          <button type="button" class="chip" data-group="institution" data-value="Other / Otro">Otro</button>
+        </div>
+      </div>
+
+      <!-- Commodity (chip / optional) -->
+      <div class="field">
+        <div class="field-label" id="lbl-commodity">
+          <span class="lbl-es">Producto</span>
+          <span class="lbl-en">Commodity</span>
+        </div>
+        <div class="chip-group" id="chips-commodity" role="group" aria-labelledby="lbl-commodity">
+          <button type="button" class="chip" data-group="commodity" data-value="Tomato / Tomate">Tomate</button>
+          <button type="button" class="chip" data-group="commodity" data-value="Oregano / Orégano">Orégano</button>
+          <button type="button" class="chip" data-group="commodity" data-value="Pepper / Ají">Ají</button>
+          <button type="button" class="chip" data-group="commodity" data-value="Quinoa">Quinoa</button>
+          <button type="button" class="chip" data-group="commodity" data-value="Other / Otro">Otro</button>
+        </div>
+      </div>
+
+      <!-- Location -->
+      <div class="field">
+        <label class="field-label" for="location">
+          <span class="lbl-es">Lugar</span>
+          <span class="lbl-en">Location</span>
+        </label>
+        <input
+          type="text"
+          id="location"
+          class="form-input"
+          placeholder="Ej. Región de Atacama, Parcela 12"
+          autocapitalize="sentences"
+        >
+      </div>
+
+    </section>
+
+    <!-- ═══ SECTION 02: Marco de Cinco Puntos ═══ -->
+    <section class="form-section" id="sec-02" aria-labelledby="sec02-title">
+      <div class="section-head">
+        <span class="sec-num">02</span>
+        <div class="sec-labels">
+          <span class="sec-es" id="sec02-title">Marco de Cinco Puntos</span>
+          <span class="sec-en">Five-Point Framework</span>
+        </div>
+      </div>
+
+      <!-- Trigger -->
+      <div class="field">
+        <label class="field-label" for="trigger">
+          <span class="lbl-es">Detonante<span class="req-star">*</span></span>
+          <span class="lbl-en">Trigger — What event starts this process?</span>
+        </label>
+        <textarea
+          id="trigger"
+          class="form-textarea"
+          placeholder="¿Qué desencadena o inicia este proceso?"
+          rows="4"
+          required
+        ></textarea>
+        <div class="field-err" id="err-trigger">Campo requerido / Required field</div>
+      </div>
+
+      <!-- Data Inputs -->
+      <div class="field">
+        <label class="field-label" for="dataInputs">
+          <span class="lbl-es">Datos Necesarios<span class="req-star">*</span></span>
+          <span class="lbl-en">Data Inputs — What information is consumed?</span>
+        </label>
+        <textarea
+          id="dataInputs"
+          class="form-textarea"
+          placeholder="¿Qué datos, documentos o fuentes de información se utilizan?"
+          rows="4"
+          required
+        ></textarea>
+        <div class="field-err" id="err-dataInputs">Campo requerido / Required field</div>
+      </div>
+
+      <!-- Decision Logic -->
+      <div class="field">
+        <label class="field-label" for="decisionLogic">
+          <span class="lbl-es">Lógica de Decisión<span class="req-star">*</span></span>
+          <span class="lbl-en">Decision Logic — How is the judgment made?</span>
+        </label>
+        <textarea
+          id="decisionLogic"
+          class="form-textarea"
+          placeholder="¿Cómo se toma la decisión? ¿Qué criterios se aplican?"
+          rows="4"
+          required
+        ></textarea>
+        <div class="field-err" id="err-decisionLogic">Campo requerido / Required field</div>
+      </div>
+
+      <!-- Output -->
+      <div class="field">
+        <label class="field-label" for="output">
+          <span class="lbl-es">Resultado<span class="req-star">*</span></span>
+          <span class="lbl-en">Output — What is produced or decided?</span>
+        </label>
+        <textarea
+          id="output"
+          class="form-textarea"
+          placeholder="¿Cuál es el resultado, producto o acción resultante?"
+          rows="4"
+          required
+        ></textarea>
+        <div class="field-err" id="err-output">Campo requerido / Required field</div>
+      </div>
+
+      <!-- Automatable (chip / required) -->
+      <div class="field">
+        <div class="field-label" id="lbl-automatable">
+          <span class="lbl-es">Humano vs Automatizable<span class="req-star">*</span></span>
+          <span class="lbl-en">Human vs Automatable</span>
+        </div>
+        <div class="chip-group" id="chips-automatable" role="group" aria-labelledby="lbl-automatable">
+          <button type="button" class="chip" data-group="automatable" data-value="Fully Automatable">Fully Automatable</button>
+          <button type="button" class="chip" data-group="automatable" data-value="Mostly Automatable">Mostly Automatable</button>
+          <button type="button" class="chip" data-group="automatable" data-value="Hybrid">Hybrid</button>
+          <button type="button" class="chip" data-group="automatable" data-value="Human Required">Human Required</button>
+        </div>
+        <div class="field-err" id="err-automatable">Seleccione una opción / Select option</div>
+      </div>
+
+    </section>
+
+    <!-- ═══ SECTION 03: Clasificación ═══ -->
+    <section class="form-section" id="sec-03" aria-labelledby="sec03-title">
+      <div class="section-head">
+        <span class="sec-num">03</span>
+        <div class="sec-labels">
+          <span class="sec-es" id="sec03-title">Clasificación</span>
+          <span class="sec-en">Classification</span>
+        </div>
+      </div>
+
+      <!-- Agent Candidate (chip / optional) -->
+      <div class="field">
+        <div class="field-label" id="lbl-agent">
+          <span class="lbl-es">Agente Candidato</span>
+          <span class="lbl-en">Agent Candidate</span>
+        </div>
+        <div class="chip-group" id="chips-agent" role="group" aria-labelledby="lbl-agent">
+          <button type="button" class="chip" data-group="agent" data-value="Price Discovery">Price Discovery</button>
+          <button type="button" class="chip" data-group="agent" data-value="Producer Compliance">Producer Compliance</button>
+          <button type="button" class="chip" data-group="agent" data-value="Forward Contract">Forward Contract</button>
+          <button type="button" class="chip" data-group="agent" data-value="EUDR Certification">EUDR Certification</button>
+          <button type="button" class="chip" data-group="agent" data-value="Market Intelligence">Market Intelligence</button>
+          <button type="button" class="chip" data-group="agent" data-value="Producer Onboarding">Producer Onboarding</button>
+          <button type="button" class="chip" data-group="agent" data-value="Resilience Fund">Resilience Fund</button>
+          <button type="button" class="chip" data-group="agent" data-value="New Agent Needed">New Agent Needed</button>
+          <button type="button" class="chip" data-group="agent" data-value="None">None</button>
+        </div>
+      </div>
+
+      <!-- Priority (chip / optional) -->
+      <div class="field">
+        <div class="field-label" id="lbl-priority">
+          <span class="lbl-es">Prioridad</span>
+          <span class="lbl-en">Priority</span>
+        </div>
+        <div class="chip-group" id="chips-priority" role="group" aria-labelledby="lbl-priority">
+          <button type="button" class="chip" data-group="priority" data-value="High / Alta">Alta / High</button>
+          <button type="button" class="chip" data-group="priority" data-value="Medium / Media">Media / Medium</button>
+          <button type="button" class="chip" data-group="priority" data-value="Low / Baja">Baja / Low</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ═══ SECTION 04: Notas y Foto ═══ -->
+    <section class="form-section" id="sec-04" aria-labelledby="sec04-title">
+      <div class="section-head">
+        <span class="sec-num">04</span>
+        <div class="sec-labels">
+          <span class="sec-es" id="sec04-title">Notas y Foto</span>
+          <span class="sec-en">Notes &amp; Photo</span>
+        </div>
+      </div>
+
+      <!-- Raw Notes -->
+      <div class="field">
+        <label class="field-label" for="rawNotes">
+          <span class="lbl-es">Notas Brutas</span>
+          <span class="lbl-en">Raw Notes — Unstructured observations, context, anomalies</span>
+        </label>
+        <textarea
+          id="rawNotes"
+          class="form-textarea"
+          placeholder="Notas libres, contexto adicional, observaciones informales..."
+          rows="5"
+        ></textarea>
+      </div>
+
+      <!-- Photo -->
+      <div class="field">
+        <div class="field-label">
+          <span class="lbl-es">Foto</span>
+          <span class="lbl-en">Photo</span>
+        </div>
+        <div class="photo-zone" id="photo-zone">
+          <input
+            type="file"
+            id="photo-input"
+            accept="image/*"
+            capture="environment"
+            aria-label="Seleccionar o tomar foto / Select or take photo"
+          >
+          <div class="photo-zone-text">
+            <span class="photo-icon">&#9632;</span>
+            <strong>Tomar foto o seleccionar / Take photo or select</strong>
+            Toque para abrir cámara o galería de fotos
+          </div>
+        </div>
+        <div class="photo-preview-wrap" id="photo-preview-wrap">
+          <img src="" id="photo-preview" class="photo-preview" alt="Vista previa / Preview">
+          <button type="button" class="btn-remove-photo" id="btn-remove-photo">&#10005; Eliminar</button>
+        </div>
+        <p class="photo-hint">
+          Nota: la foto requiere un servicio de almacenamiento externo.<br>
+          Note: photo upload requires an external storage service — see <code>uploadPhoto()</code> TODO in source.
+        </p>
+      </div>
+
+    </section>
+
+    <!-- ═══ SUBMIT ═══ -->
+    <div class="submit-zone">
+      <button type="submit" class="btn-submit" id="btn-submit">
+        Enviar Observación / Submit Observation
+      </button>
+      <p class="submit-hint" id="submit-hint"></p>
+      <p class="queue-count" id="queue-count"></p>
+    </div>
+
+  </form>
+</main>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toast-wrap" aria-live="assertive" aria-atomic="false"></div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════════ -->
+<script>
+/* ─────────────────────────────────────────────────────────────────
+   CONFIGURATION
+   ───────────────────────────────────────────────────────────────── */
+
+// Set PROXY_URL to your server-side proxy endpoint.
+// The proxy must: accept POST with JSON body, attach
+//   Authorization: Bearer <NOTION_API_KEY>
+//   Notion-Version: 2022-06-28
+// and forward to https://api.notion.com/v1/pages
+//
+// Leave empty to attempt a direct call (CORS-blocked in production;
+// useful only when running through a local CORS-disable proxy for testing).
+const PROXY_URL = '';
+
+const DATABASE_ID = '57c566fe-bc8e-48b1-8f5e-8d7d56e49016';
+const DRAFT_KEY   = 'field_obs_draft_v2';
+const QUEUE_KEY   = 'field_obs_queue_v2';
+
+/* ─────────────────────────────────────────────────────────────────
+   STATE  (chip selections + photo)
+   ───────────────────────────────────────────────────────────────── */
+const sel = {
+  observer:    null,
+  institution: null,
+  commodity:   null,
+  automatable: null,
+  agent:       null,
+  priority:    null,
+};
+
+let photoFile = null;
+let photoUrl  = null;
+
+/* ─────────────────────────────────────────────────────────────────
+   UTILITIES
+   ───────────────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function qs(selector, root = document) {
+  return root.querySelector(selector);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   PROGRESS BAR  (8 required fields)
+   ───────────────────────────────────────────────────────────────── */
+function updateProgress() {
+  const checks = [
+    $('processName').value.trim(),    // 1
+    $('dateObserved').value,          // 2
+    sel.observer,                     // 3
+    $('trigger').value.trim(),        // 4
+    $('dataInputs').value.trim(),     // 5
+    $('decisionLogic').value.trim(),  // 6
+    $('output').value.trim(),         // 7
+    sel.automatable,                  // 8
+  ];
+
+  const done = checks.filter(Boolean).length;
+  const pct  = (done / 8) * 100;
+
+  $('progress-fill').style.width = pct + '%';
+  $('prog-done').textContent = done;
+
+  const bar = $('progress-bar');
+  bar.setAttribute('aria-valuenow', done);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   DRAFT  (localStorage auto-save + restore)
+   ───────────────────────────────────────────────────────────────── */
+function snapshotDraft() {
+  return {
+    processName:   $('processName').value,
+    dateObserved:  $('dateObserved').value,
+    location:      $('location').value,
+    trigger:       $('trigger').value,
+    dataInputs:    $('dataInputs').value,
+    decisionLogic: $('decisionLogic').value,
+    output:        $('output').value,
+    rawNotes:      $('rawNotes').value,
+    ...sel,
+  };
+}
+
+function saveDraft() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(snapshotDraft()));
+  } catch (_) { /* storage full — silently skip */ }
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+}
+
+function applyDraftData(d) {
+  if (!d) return;
+  if (d.processName)   $('processName').value   = d.processName;
+  if (d.dateObserved)  $('dateObserved').value  = d.dateObserved;
+  if (d.location)      $('location').value      = d.location;
+  if (d.trigger)       $('trigger').value       = d.trigger;
+  if (d.dataInputs)    $('dataInputs').value    = d.dataInputs;
+  if (d.decisionLogic) $('decisionLogic').value = d.decisionLogic;
+  if (d.output)        $('output').value        = d.output;
+  if (d.rawNotes)      $('rawNotes').value      = d.rawNotes;
+
+  ['observer','institution','commodity','automatable','agent','priority'].forEach(group => {
+    if (d[group]) {
+      sel[group] = d[group];
+      document.querySelectorAll(`.chip[data-group="${group}"]`).forEach(chip => {
+        chip.classList.toggle('selected', chip.dataset.value === d[group]);
+      });
+    }
+  });
+
+  updateProgress();
+}
+
+function initDraftBanner() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    const hasContent = Object.values(d).some(v => v && String(v).trim() !== '');
+    if (!hasContent) return;
+
+    const banner = $('draft-banner');
+    banner.classList.add('visible');
+
+    $('btn-restore-draft').addEventListener('click', () => {
+      applyDraftData(d);
+      banner.classList.remove('visible');
+      showToast('Borrador restaurado / Draft restored', 'info');
+    }, { once: true });
+
+    $('btn-discard-draft').addEventListener('click', () => {
+      clearDraft();
+      banner.classList.remove('visible');
+    }, { once: true });
+  } catch (_) { /* corrupt storage */ }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   CHIP SELECTORS
+   ───────────────────────────────────────────────────────────────── */
+function initChips() {
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const group  = chip.dataset.group;
+      const val    = chip.dataset.value;
+      const wasOn  = chip.classList.contains('selected');
+
+      // Deselect all in this group
+      document.querySelectorAll(`.chip[data-group="${group}"]`)
+        .forEach(c => c.classList.remove('selected'));
+
+      if (!wasOn) {
+        chip.classList.add('selected');
+        sel[group] = val;
+      } else {
+        sel[group] = null;  // tap again to deselect
+      }
+
+      // Clear error state for this group
+      const errEl = $(`err-${group}`);
+      const grpEl = $(`chips-${group}`);
+      if (errEl) errEl.classList.remove('visible');
+      if (grpEl) grpEl.classList.remove('has-error');
+
+      updateProgress();
+      saveDraft();
+    });
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   PHOTO HANDLING
+   ───────────────────────────────────────────────────────────────── */
+function initPhoto() {
+  const input   = $('photo-input');
+  const wrap    = $('photo-preview-wrap');
+  const preview = $('photo-preview');
+  const removeBtn = $('btn-remove-photo');
+
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    photoFile = file;
+    photoUrl  = null;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.src = e.target.result;
+      wrap.classList.add('visible');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removeBtn.addEventListener('click', () => {
+    photoFile = null;
+    photoUrl  = null;
+    input.value   = '';
+    preview.src   = '';
+    wrap.classList.remove('visible');
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   PHOTO UPLOAD  — TODO: implement for production
+   ─────────────────────────────────────────────────────────────────
+   Marco: replace this stub with a real upload to your storage
+   service (e.g. S3, Cloudinary, Supabase Storage, Cloudflare R2).
+   The function receives a File object and must return a Promise
+   that resolves to a publicly-accessible URL string.
+
+   Example skeleton:
+     const fd = new FormData();
+     fd.append('file', file);
+     const res = await fetch('https://your-upload-service/upload', {
+       method: 'POST',
+       headers: { 'Authorization': 'Bearer YOUR_UPLOAD_TOKEN' },
+       body: fd
+     });
+     const { url } = await res.json();
+     return url;
+   ───────────────────────────────────────────────────────────────── */
+async function uploadPhoto(file) {
+  // TODO: implement photo upload — return public URL string
+  console.warn('[uploadPhoto] Stub called. No photo will be attached to Notion.');
+  return null;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   TOAST NOTIFICATIONS
+   ───────────────────────────────────────────────────────────────── */
+function showToast(msg, type = 'info', duration = 4500) {
+  const LABELS = { success: 'Enviado / Sent', error: 'Error', info: 'Aviso / Notice' };
+  const wrap  = $('toast-wrap');
+  const toast = document.createElement('div');
+  toast.className = `toast t-${type}`;
+  toast.innerHTML = `<div class="toast-kind">${LABELS[type] || type}</div><div class="toast-msg">${msg}</div>`;
+
+  wrap.appendChild(toast);
+  requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('visible')));
+
+  setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   OFFLINE QUEUE
+   ───────────────────────────────────────────────────────────────── */
+function getQueue() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); }
+  catch (_) { return []; }
+}
+
+function saveQueue(q) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+}
+
+function enqueue(payload) {
+  const q = getQueue();
+  q.push({ payload, ts: Date.now() });
+  saveQueue(q);
+  renderQueueCount();
+}
+
+function renderQueueCount() {
+  const n   = getQueue().length;
+  const el  = $('queue-count');
+  const hint = $('submit-hint');
+
+  if (n > 0) {
+    el.textContent = `${n} observación${n > 1 ? 'es' : ''} en cola / observation${n > 1 ? 's' : ''} queued`;
+  } else {
+    el.textContent = '';
+  }
+
+  if (!navigator.onLine) {
+    hint.textContent = 'Sin conexión — se guardará en cola / Offline — will be queued';
+    hint.className   = 'submit-hint warn';
+  } else {
+    hint.textContent = '';
+    hint.className   = 'submit-hint';
+  }
+}
+
+async function flushQueue() {
+  const queue = getQueue();
+  if (queue.length === 0) return;
+
+  let succeeded = 0;
+  const remaining = [];
+
+  for (const item of queue) {
+    try {
+      await postToNotion(item.payload);
+      succeeded++;
+    } catch (_) {
+      remaining.push(item);
+    }
+  }
+
+  saveQueue(remaining);
+  renderQueueCount();
+
+  if (succeeded > 0) {
+    showToast(
+      `${succeeded} observación${succeeded > 1 ? 'es' : ''} sincronizada${succeeded > 1 ? 's' : ''} / observation${succeeded > 1 ? 's' : ''} synced`,
+      'success',
+      5000
+    );
+  }
+}
+
+window.addEventListener('online',  () => { renderQueueCount(); flushQueue(); });
+window.addEventListener('offline', renderQueueCount);
+
+/* ─────────────────────────────────────────────────────────────────
+   NOTION PAYLOAD BUILDER
+   ───────────────────────────────────────────────────────────────── */
+function buildPayload(resolvedPhotoUrl) {
+  const props = {};
+
+  // ── Title ──────────────────────────────────────────────────────
+  const name = $('processName').value.trim();
+  if (name) {
+    props['Process Name / Nombre del Proceso'] = {
+      title: [{ text: { content: name.slice(0, 2000) } }]
+    };
+  }
+
+  // ── Date ───────────────────────────────────────────────────────
+  const dt = $('dateObserved').value;
+  if (dt) {
+    props['Date Observed / Fecha'] = {
+      date: { start: dt }
+    };
+  }
+
+  // ── Select fields ──────────────────────────────────────────────
+  const selectMap = [
+    { key: 'observer',    notion: 'Observer' },
+    { key: 'institution', notion: 'Institution / Institución' },
+    { key: 'commodity',   notion: 'Commodity / Producto' },
+    { key: 'automatable', notion: 'Human vs Automatable / Humano vs Automatizable' },
+    { key: 'agent',       notion: 'Agent Candidate / Agente Candidato' },
+    { key: 'priority',    notion: 'Priority / Prioridad' },
+  ];
+  selectMap.forEach(({ key, notion }) => {
+    if (sel[key]) props[notion] = { select: { name: sel[key] } };
+  });
+
+  // ── Rich text fields ───────────────────────────────────────────
+  const richMap = [
+    { id: 'location',      notion: 'Location / Lugar' },
+    { id: 'trigger',       notion: 'Trigger / Detonante' },
+    { id: 'dataInputs',    notion: 'Data Inputs / Datos Necesarios' },
+    { id: 'decisionLogic', notion: 'Decision Logic / Lógica de Decisión' },
+    { id: 'output',        notion: 'Output / Resultado' },
+    { id: 'rawNotes',      notion: 'Raw Notes / Notas Brutas' },
+  ];
+  richMap.forEach(({ id, notion }) => {
+    const v = $(id).value.trim();
+    if (v) props[notion] = { rich_text: [{ text: { content: v.slice(0, 2000) } }] };
+  });
+
+  // ── Photo ──────────────────────────────────────────────────────
+  if (resolvedPhotoUrl) {
+    props['Photo / Foto'] = {
+      files: [{ name: 'field-photo', external: { url: resolvedPhotoUrl } }]
+    };
+  }
+
+  return { parent: { database_id: DATABASE_ID }, properties: props };
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   API CALL
+   ───────────────────────────────────────────────────────────────── */
+async function postToNotion(payload) {
+  const endpoint = PROXY_URL || 'https://api.notion.com/v1/pages';
+  const headers  = { 'Content-Type': 'application/json' };
+
+  if (!PROXY_URL) {
+    // Direct call — only works if CORS is bypassed locally or via browser extension.
+    // In production, CORS will block this. Set PROXY_URL.
+    headers['Notion-Version'] = '2022-06-28';
+    // DO NOT add the API key here — it would be exposed client-side.
+    // Your proxy must attach: Authorization: Bearer <NOTION_API_KEY>
+    console.warn('[CONFIG] PROXY_URL is not set. Direct Notion calls are CORS-blocked in browsers. Set PROXY_URL for production.');
+  }
+
+  const res = await fetch(endpoint, {
+    method:  'POST',
+    headers,
+    body:    JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const json = await res.json();
+      detail = json.message || json.error || detail;
+    } catch (_) {}
+    throw new Error(detail);
+  }
+
+  return res.json();
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   VALIDATION
+   ───────────────────────────────────────────────────────────────── */
+function validate() {
+  let ok = true;
+
+  // Text / date required fields
+  const textReqs = ['processName','dateObserved','trigger','dataInputs','decisionLogic','output'];
+  textReqs.forEach(id => {
+    const el  = $(id);
+    const err = $(`err-${id}`);
+    if (!el || !el.value.trim()) {
+      el && el.classList.add('has-error');
+      err && err.classList.add('visible');
+      ok = false;
+    } else {
+      el.classList.remove('has-error');
+      err && err.classList.remove('visible');
+    }
+  });
+
+  // Chip required fields
+  const chipReqs = ['observer', 'automatable'];
+  chipReqs.forEach(group => {
+    if (!sel[group]) {
+      $(`chips-${group}`) && $(`chips-${group}`).classList.add('has-error');
+      $(`err-${group}`)   && $(`err-${group}`).classList.add('visible');
+      ok = false;
+    }
+  });
+
+  if (!ok) {
+    const first = document.querySelector('.has-error, .chip-group.has-error .chip:not(.selected)');
+    if (first) first.closest('.field, .form-input, .form-textarea')
+      ? first.closest('.field, .form-input, .form-textarea').scrollIntoView({ behavior: 'smooth', block: 'center' })
+      : first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  return ok;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   FORM RESET
+   ───────────────────────────────────────────────────────────────── */
+function resetForm() {
+  $('obs-form').reset();
+  $('dateObserved').value = todayISO();
+
+  // Clear chip state
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  Object.keys(sel).forEach(k => { sel[k] = null; });
+
+  // Clear photo
+  photoFile = null;
+  photoUrl  = null;
+  $('photo-input').value = '';
+  $('photo-preview').src = '';
+  $('photo-preview-wrap').classList.remove('visible');
+
+  // Clear errors
+  document.querySelectorAll('.field-err').forEach(e => e.classList.remove('visible'));
+  document.querySelectorAll('.has-error').forEach(e => e.classList.remove('has-error'));
+  document.querySelectorAll('.chip-group.has-error').forEach(e => e.classList.remove('has-error'));
+
+  clearDraft();
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   SUBMIT HANDLER
+   ───────────────────────────────────────────────────────────────── */
+$('obs-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!validate()) return;
+
+  const btn = $('btn-submit');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.setAttribute('aria-busy', 'true');
+
+  const processName = $('processName').value.trim();
+
+  try {
+    // 1. Upload photo (stub — returns null until implemented)
+    let resolvedUrl = null;
+    if (photoFile) {
+      try {
+        resolvedUrl = await uploadPhoto(photoFile);
+        photoUrl = resolvedUrl;
+      } catch (photoErr) {
+        console.warn('Photo upload failed:', photoErr);
+        showToast(
+          'La foto no pudo subirse; se enviará sin foto / Photo upload failed; submitting without photo.',
+          'error',
+          4000
+        );
+      }
+    }
+
+    // 2. Build Notion payload
+    const payload = buildPayload(resolvedUrl);
+
+    // 3. Submit or enqueue
+    if (!navigator.onLine) {
+      enqueue(payload);
+      showToast(
+        `Guardado en cola sin conexión / Saved offline. Se sincronizará al reconectar.`,
+        'info',
+        6000
+      );
+      clearDraft();
+      resetForm();
+    } else {
+      await postToNotion(payload);
+      showToast(
+        `&#10003; "${escapeHtml(processName)}" registrada / observation submitted`,
+        'success',
+        6000
+      );
+      clearDraft();
+      resetForm();
+    }
+
+  } catch (err) {
+    console.error('Submit error:', err);
+    showToast(
+      `Error al enviar: ${escapeHtml(err.message)}. Revise la consola / Check console.`,
+      'error',
+      7000
+    );
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.removeAttribute('aria-busy');
+    btn.textContent = 'Enviar Observación / Submit Observation';
+  }
+});
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   INPUT EVENT LISTENERS (progress + auto-save)
+   ───────────────────────────────────────────────────────────────── */
+const watchIds = ['processName','dateObserved','location','trigger','dataInputs','decisionLogic','output','rawNotes'];
+
+watchIds.forEach(id => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input',  () => { updateProgress(); saveDraft(); });
+  el.addEventListener('change', () => { updateProgress(); saveDraft(); });
+});
+
+// Clear inline errors on user interaction
+['processName','trigger','dataInputs','decisionLogic','output'].forEach(id => {
+  $(id).addEventListener('input', () => {
+    $(id).classList.remove('has-error');
+    $(`err-${id}`) && $(`err-${id}`).classList.remove('visible');
+  });
+});
+
+$('dateObserved').addEventListener('change', () => {
+  $('dateObserved').classList.remove('has-error');
+  $('err-dateObserved') && $('err-dateObserved').classList.remove('visible');
+});
+
+/* ─────────────────────────────────────────────────────────────────
+   INIT
+   ───────────────────────────────────────────────────────────────── */
+function init() {
+  // Default date to today
+  $('dateObserved').value = todayISO();
+
+  // Wire up chips
+  initChips();
+
+  // Wire up photo
+  initPhoto();
+
+  // Show draft restore banner if draft exists
+  initDraftBanner();
+
+  // Update offline/queue state
+  renderQueueCount();
+
+  // Flush any queued submissions if we are online
+  if (navigator.onLine) flushQueue();
+
+  // Initial progress render
+  updateProgress();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
